@@ -26,7 +26,6 @@ local SarXNightLib = {
     SaveCfg = false
 }
 
--- ============ DEFAULT ASSET IDs ============
 local Assets = {
     Logo = "rbxassetid://11436111346",
     NotificationIcon = "rbxassetid://10709751939",
@@ -37,7 +36,9 @@ local Assets = {
     DropdownIcon = "rbxassetid://10709790948",
     SearchIcon = "rbxassetid://10747373144",
     DefaultTabIcon = "rbxassetid://10723345516",
-    Checkmark = "rbxassetid://10747384394"
+    Checkmark = "rbxassetid://10747384394",
+    CopyIcon = "rbxassetid://10734950309",
+    LinkIcon = "rbxassetid://10723415903"
 }
 
 local SarXNight = Instance.new("ScreenGui")
@@ -305,16 +306,10 @@ function SarXNightLib:MakeWindow(WindowConfig)
     WindowConfig.Name = WindowConfig.Name or "SarXNight Library"
     WindowConfig.ConfigFolder = WindowConfig.ConfigFolder or WindowConfig.Name
     WindowConfig.SaveConfig = WindowConfig.SaveConfig or false
-
-    -- ============ v3: Interface ID (window title icon) ============
     WindowConfig.InterfaceId = WindowConfig.InterfaceId or WindowConfig.Icon or Assets.WindowIcon
-
     if WindowConfig.IntroEnabled == nil then WindowConfig.IntroEnabled = true end
     WindowConfig.IntroText = WindowConfig.IntroText or "SarXNight Library"
-
-    -- ============ v3: Loading Screen Logo ID ============
     WindowConfig.LoadingLogoId = WindowConfig.LoadingLogoId or WindowConfig.IntroIcon or Assets.Logo
-
     WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
     SarXNightLib.Folder = WindowConfig.ConfigFolder
     SarXNightLib.SaveCfg = WindowConfig.SaveConfig
@@ -402,7 +397,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
         })
     }), "Second")
 
-    -- ============ Window Title with Interface ID icon ============
     local WindowIcon = SetProps(MakeElement("Image", WindowConfig.InterfaceId), {
         Size = UDim2.new(0,20,0,20), Position = UDim2.new(0,15,0,15), ImageColor3 = SarXNightLib.Themes.Default.Accent, Name = "InterfaceIcon"
     })
@@ -427,7 +421,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
         DragPoint, WindowStuff
     }), "Main")
 
-    -- Mobile toggle (uses Interface ID icon)
     local MobileToggleFrame = SetProps(MakeElement("TFrame"), {
         Parent = SarXNight, Position = UDim2.new(0,15,0,80), Size = UDim2.new(0,50,0,50), Visible = false
     })
@@ -510,7 +503,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
         Minimized = not Minimized
     end)
 
-    -- ============ LOADING SCREEN (uses LoadingLogoId) ============
     local function LoadSequence()
         MainWindow.Visible = false
 
@@ -624,18 +616,115 @@ function SarXNightLib:MakeWindow(WindowConfig)
                 return LabelFunction
             end
 
-            function ElementFunction:AddParagraph(Text, Content)
-                Text = Text or "Text"; Content = Content or "Content"
+            -- ============ v3.1: PARAGRAPH with optional Image + Socials ============
+            function ElementFunction:AddParagraph(ParagraphConfig, LegacyContent)
+                -- Support both styles:
+                --   AddParagraph("Title", "Content")  (legacy)
+                --   AddParagraph({ Title=..., Content=..., Image=..., Socials={...} })
+                local Title, Content, Image, Socials
+                if type(ParagraphConfig) == "table" then
+                    Title = ParagraphConfig.Title or "Title"
+                    Content = ParagraphConfig.Content or "Content"
+                    Image = ParagraphConfig.Image
+                    Socials = ParagraphConfig.Socials
+                else
+                    Title = ParagraphConfig or "Title"
+                    Content = LegacyContent or "Content"
+                end
+
+                local hasImage = Image ~= nil
+                local textLeft = hasImage and 56 or 12
+
                 local ParagraphFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255,255,255), 0, 5), {Size = UDim2.new(1,0,0,30), BackgroundTransparency = 0.7, Parent = ItemParent}), {
-                    AddThemeObject(SetProps(MakeElement("Label", Text, 15), {Size = UDim2.new(1,-12,0,14), Position = UDim2.new(0,12,0,10), Font = Enum.Font.GothamBold, Name = "Title"}), "Text"),
-                    AddThemeObject(SetProps(MakeElement("Label", "", 13), {Size = UDim2.new(1,-24,0,0), Position = UDim2.new(0,12,0,26), Font = Enum.Font.GothamSemibold, Name = "Content", TextWrapped = true}), "TextDark"),
+                    AddThemeObject(SetProps(MakeElement("Label", Title, 15), {Size = UDim2.new(1,-(textLeft+12),0,16), Position = UDim2.new(0,textLeft,0,10), Font = Enum.Font.GothamBold, Name = "Title"}), "Text"),
+                    AddThemeObject(SetProps(MakeElement("Label", "", 13), {Size = UDim2.new(1,-(textLeft+12),0,0), Position = UDim2.new(0,textLeft,0,28), Font = Enum.Font.GothamSemibold, Name = "Content", TextWrapped = true}), "TextDark"),
                     AddThemeObject(MakeElement("Stroke"), "Stroke")
                 }), "Second")
+
+                -- Optional image (left side)
+                if hasImage then
+                    local ImageHolder = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255,255,255), 0, 6), {
+                        Size = UDim2.new(0,36,0,36), Position = UDim2.new(0,10,0,10), BackgroundTransparency = 1, Parent = ParagraphFrame
+                    }), {
+                        SetProps(MakeElement("Image", Image), {Size = UDim2.new(1,0,1,0)}),
+                        MakeElement("Corner", 0, 6)
+                    })
+                end
+
+                -- Optional socials row (copyable links)
+                local socialHolder
+                if Socials and #Socials > 0 then
+                    socialHolder = SetChildren(SetProps(MakeElement("TFrame"), {
+                        Size = UDim2.new(1,-(textLeft+12),0,26), Position = UDim2.new(0,textLeft,0,0), Name = "Socials", Parent = ParagraphFrame
+                    }), {
+                        SetProps(MakeElement("List", 0, 6), {FillDirection = Enum.FillDirection.Horizontal})
+                    })
+
+                    for _, social in ipairs(Socials) do
+                        local sName = social.Name or "Link"
+                        local sValue = social.Value or ""
+                        local sIcon = social.Icon or Assets.CopyIcon
+
+                        local SocialBtn = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", SarXNightLib.Themes.Default.Main, 0, 6), {
+                            Size = UDim2.new(0, 0, 0, 24), AutomaticSize = Enum.AutomaticSize.X, Parent = socialHolder
+                        }), {
+                            AddThemeObject(MakeElement("Stroke"), "Stroke"),
+                            SetProps(MakeElement("Image", sIcon), {Size = UDim2.new(0,12,0,12), Position = UDim2.new(0,8,0.5,-6), ImageColor3 = SarXNightLib.Themes.Default.Accent, Name = "SIcon"}),
+                            AddThemeObject(SetProps(MakeElement("Label", sName, 12), {
+                                Position = UDim2.new(0,24,0,0), Size = UDim2.new(0,0,1,0), AutomaticSize = Enum.AutomaticSize.X,
+                                Font = Enum.Font.GothamSemibold, Name = "SLabel", TextXAlignment = Enum.TextXAlignment.Left
+                            }), "Text"),
+                            SetProps(MakeElement("Padding", 4, 4, 10, 4), {})
+                        }), "Second")
+
+                        local SBtn = SetProps(MakeElement("Button"), {Size = UDim2.new(1,0,1,0), Parent = SocialBtn})
+
+                        AddConnection(SBtn.MouseButton1Click, function()
+                            if setclipboard then
+                                setclipboard(sValue)
+                            end
+                            local original = SocialBtn.SLabel.Text
+                            SocialBtn.SLabel.Text = "Copied!"
+                            TweenService:Create(SocialBtn.UIStroke, TweenInfo.new(0.2), {Color = SarXNightLib.Themes.Default.Accent}):Play()
+                            task.delay(1.2, function()
+                                SocialBtn.SLabel.Text = original
+                                TweenService:Create(SocialBtn.UIStroke, TweenInfo.new(0.2), {Color = SarXNightLib.Themes.Default.Stroke}):Play()
+                            end)
+                            SarXNightLib:MakeNotification({Name = sName, Content = "Copied to clipboard!", Image = sIcon, Time = 3})
+                        end)
+                        AddConnection(SBtn.MouseEnter, function()
+                            TweenService:Create(SocialBtn, TweenInfo.new(0.2), {BackgroundColor3 = SarXNightLib.Themes.Default.Second}):Play()
+                        end)
+                        AddConnection(SBtn.MouseLeave, function()
+                            TweenService:Create(SocialBtn, TweenInfo.new(0.2), {BackgroundColor3 = SarXNightLib.Themes.Default.Main}):Play()
+                        end)
+                    end
+                end
+
+                local function Recalc()
+                    local contentBottom = ParagraphFrame.Content.Position.Y.Offset + ParagraphFrame.Content.TextBounds.Y
+                    local socialBottom = socialHolder and (socialHolder.Position.Y.Offset + 26) or 0
+                    local minHeight = hasImage and 56 or 0
+                    local total = math.max(contentBottom, socialBottom, minHeight) + 12
+                    ParagraphFrame.Content.Size = UDim2.new(1,-(textLeft+12),0, ParagraphFrame.Content.TextBounds.Y)
+                    ParagraphFrame.Size = UDim2.new(1,0,0, total)
+                end
+
                 AddConnection(ParagraphFrame.Content:GetPropertyChangedSignal("Text"), function()
-                    ParagraphFrame.Content.Size = UDim2.new(1,-24,0, ParagraphFrame.Content.TextBounds.Y)
-                    ParagraphFrame.Size = UDim2.new(1,0,0, ParagraphFrame.Content.TextBounds.Y + 35)
+                    -- push content + socials down properly
+                    local contentY = 28
+                    if socialHolder then
+                        contentY = 0
+                        ParagraphFrame.Content.Position = UDim2.new(0,textLeft,0,28)
+                        socialHolder.Position = UDim2.new(0,textLeft,0, 28 + ParagraphFrame.Content.TextBounds.Y + 6)
+                    else
+                        ParagraphFrame.Content.Position = UDim2.new(0,textLeft,0,28)
+                    end
+                    Recalc()
                 end)
+
                 ParagraphFrame.Content.Text = Content
+
                 local ParagraphFunction = {}
                 function ParagraphFunction:Set(ToChange) ParagraphFrame.Content.Text = ToChange end
                 return ParagraphFunction
@@ -692,6 +781,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
                 return Toggle
             end
 
+            -- ============ v3.1: SLIDER with typeable input box ============
             function ElementFunction:AddSlider(SliderConfig)
                 SliderConfig = SliderConfig or {}
                 SliderConfig.Name = SliderConfig.Name or "Slider"
@@ -710,14 +800,27 @@ function SarXNightLib:MakeWindow(WindowConfig)
                 local SliderDrag = SetChildren(SetProps(MakeElement("RoundFrame", SliderConfig.Color, 0, 5), {Size = UDim2.new(0,0,1,0), BackgroundTransparency = 0.3, ClipsDescendants = true}), {
                     AddThemeObject(SetProps(MakeElement("Label", "value", 13), {Size = UDim2.new(1,-12,0,14), Position = UDim2.new(0,12,0,6), Font = Enum.Font.GothamBold, Name = "Value", TextTransparency = 0}), "Text")
                 })
-                local SliderBar = SetChildren(SetProps(MakeElement("RoundFrame", SliderConfig.Color, 0, 5), {Size = UDim2.new(1,-24,0,26), Position = UDim2.new(0,12,0,30), BackgroundTransparency = 0.9}), {
+                local SliderBar = SetChildren(SetProps(MakeElement("RoundFrame", SliderConfig.Color, 0, 5), {Size = UDim2.new(1,-70,0,26), Position = UDim2.new(0,12,0,30), BackgroundTransparency = 0.9}), {
                     SetProps(MakeElement("Stroke"), {Color = SliderConfig.Color}),
                     AddThemeObject(SetProps(MakeElement("Label", "value", 13), {Size = UDim2.new(1,-12,0,14), Position = UDim2.new(0,12,0,6), Font = Enum.Font.GothamBold, Name = "Value", TextTransparency = 0.8}), "Text"),
                     SliderDrag
                 })
+
+                -- v3.1: Input box for typing the value directly
+                local SliderInput = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255,255,255), 0, 5), {
+                    Size = UDim2.new(0,48,0,26), Position = UDim2.new(1,-54,0,30), AnchorPoint = Vector2.new(0,0)
+                }), {
+                    AddThemeObject(MakeElement("Stroke"), "Stroke"),
+                    AddThemeObject(Create("TextBox", {
+                        Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = tostring(SliderConfig.Default),
+                        Font = Enum.Font.GothamBold, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Center,
+                        ClearTextOnFocus = false, Name = "InputBox", PlaceholderText = "0"
+                    }), "Text")
+                }), "Main")
+
                 local SliderFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255,255,255), 0, 4), {Size = UDim2.new(1,0,0,65), Parent = ItemParent}), {
                     AddThemeObject(SetProps(MakeElement("Label", SliderConfig.Name, 15), {Size = UDim2.new(1,-12,0,14), Position = UDim2.new(0,12,0,10), Font = Enum.Font.GothamBold, Name = "Content"}), "Text"),
-                    AddThemeObject(MakeElement("Stroke"), "Stroke"), SliderBar
+                    AddThemeObject(MakeElement("Stroke"), "Stroke"), SliderBar, SliderInput
                 }), "Second")
 
                 SliderBar.InputBegan:Connect(function(Input)
@@ -738,11 +841,23 @@ function SarXNightLib:MakeWindow(WindowConfig)
                     end
                 end)
 
+                -- v3.1: typed input handling
+                AddConnection(SliderInput.InputBox.FocusLost, function()
+                    local typed = tonumber(SliderInput.InputBox.Text)
+                    if typed then
+                        Slider:Set(typed)
+                        SaveCfg(game.GameId)
+                    else
+                        SliderInput.InputBox.Text = tostring(Slider.Value)
+                    end
+                end)
+
                 function Slider:Set(Value)
                     self.Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
                     TweenService:Create(SliderDrag, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Size = UDim2.fromScale((self.Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1)}):Play()
                     SliderBar.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
                     SliderDrag.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
+                    SliderInput.InputBox.Text = tostring(self.Value)
                     SliderConfig.Callback(self.Value)
                 end
                 Slider:Set(Slider.Value)
