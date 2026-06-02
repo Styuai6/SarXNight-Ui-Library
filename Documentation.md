@@ -16,7 +16,7 @@ A clean, mobile-friendly Roblox UI library with image-based icons, search-filter
 ## Quick Start
 
 ```lua
-local SarXNight = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOU/SarXNight/main/Source.luau"))()
+local SarXNight = loadstring(game:HttpGet("https://github.com/Styuai6/SarXNight-Ui-Library/blob/main/Source.luau"))()
 
 local Window = SarXNight:MakeWindow({
     Name = "My Hub",
@@ -297,7 +297,7 @@ SarXNight:Destroy()
 ## Full Example
 
 ```lua
-local SarXNight = loadstring(game:HttpGet("YOUR_URL/Source.luau"))()
+local SarXNight = loadstring(game:HttpGet("https://github.com/Styuai6/SarXNight-Ui-Library/blob/main/Source.luau"))()
 
 local Window = SarXNight:MakeWindow({
     Name = "Nightfall Hub",
