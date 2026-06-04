@@ -1,41 +1,67 @@
-# SarXNightLib Documentation
+# SarXNightLib Documentation — v1.1.0
 
-A classic/rework 2022-style Roblox UI library.
+A classic/rework Roblox UI library with a **2023 redesign**, mobile support, search bar, scrollable dropdowns, JSON config, and a loading screen.
 
-## Loading the Library
+## What's New in v1.1.0
+- ✅ Fixed tab element functions (Flag support added)
+- 🎚️ Slider now has an **editable input box** (type exact values)
+- 📱 **Mobile** floating ≡ button to open/close UI + resized window
+- 📂 Dropdowns are **never clipped** (rendered as overlay), **scrollable**, max **3 options visible**
+- 🎨 New **2023 UI design** + tab **search bar**
+- 💾 **JSON config** save/load via Flags
+- ⏳ **Loading screen** on startup
+
+---
+
+## Loading
 
 ```lua
 local SarXNightLib = loadstring(game:HttpGet("YOUR_RAW_URL/Source.luau"))()
 ```
-
-## Themes
-
-Two built-in themes:
-- `"default"` — SarXNight (purple/night theme)
-- `"dark"` — Pure dark (blue accent)
-
----
 
 ## Creating a Window
 
 ```lua
 local Window = SarXNightLib:CreateWindow({
     Name = "My Script Hub",
-    Theme = "default",                 -- "default" or "dark"
-    ToggleKey = Enum.KeyCode.RightShift -- key to show/hide UI
+    Theme = "default",                      -- "default" or "dark"
+    ToggleKey = Enum.KeyCode.RightShift,    -- desktop show/hide
+    ConfigFolder = "MyHub",                 -- folder for config json
+    ConfigName = "settings",                -- file name (-> MyHub/settings.json)
+    LoadingScreen = {                       -- set to false to disable
+        Title = "My Script Hub",
+        Subtitle = "Loading assets...",
+        Duration = 2.5
+    }
 })
 ```
 
 ---
 
-## Creating a Tab
+## Tabs & Search
 
 ```lua
-local MainTab = Window:CreateTab({ Name = "Main" })
-local SettingsTab = Window:CreateTab({ Name = "Settings" })
--- shorthand:
-local Tab = Window:CreateTab("Combat")
+local Main = Window:CreateTab({ Name = "Main" })
+local Combat = Window:CreateTab("Combat")  -- shorthand
 ```
+A **search bar** at the top of the sidebar filters tabs live as you type.
+
+---
+
+## Config System (JSON)
+
+Add a `Flag` to any stateful element. Then save/load all at once.
+
+```lua
+Main:Toggle({ Name = "God Mode", Flag = "godmode", Callback = function(s) end })
+Main:Slider({ Name = "Speed", Min=16, Max=200, Flag = "speed" })
+
+-- Save / Load
+Window:SaveConfig()  -- writes to ConfigFolder/ConfigName.json
+Window:LoadConfig()  -- reads file and applies to all flagged elements
+```
+Supports: Toggle, Slider, ColorPicker, Dropdown, Input, Keybind.
+Color3 and EnumItem (keybinds) are serialized automatically.
 
 ---
 
@@ -43,181 +69,81 @@ local Tab = Window:CreateTab("Combat")
 
 ### Button
 ```lua
-MainTab:Button({
-    Name = "Click Me",
-    Callback = function()
-        print("Button clicked!")
-    end
-})
+Main:Button({ Name = "Click Me", Callback = function() print("clicked") end })
 ```
 
 ### Toggle
 ```lua
-local myToggle = MainTab:Toggle({
-    Name = "God Mode",
-    Default = false,
-    Callback = function(state)
-        print("Toggle is now:", state)
-    end
-})
-
-myToggle.Set(true)        -- programmatically set
-print(myToggle.Get())     -- read state
+local t = Main:Toggle({ Name = "Auto", Default = false, Flag = "auto",
+    Callback = function(s) print(s) end })
+t.Set(true); print(t.Get())
 ```
 
-### Slider
+### Slider (with input box)
 ```lua
-local mySlider = MainTab:Slider({
-    Name = "Walk Speed",
-    Min = 16,
-    Max = 200,
-    Default = 16,
-    Decimals = 0,
-    Callback = function(value)
-        print("Speed:", value)
-    end
-})
-
-mySlider.Set(100)
-print(mySlider.Get())
+local s = Main:Slider({ Name = "Speed", Min=16, Max=200, Default=16, Decimals=0,
+    Flag = "speed", Callback = function(v) print(v) end })
+s.Set(100); print(s.Get())
 ```
+You can now **click the value box and type** an exact number.
 
 ### ColorPicker
 ```lua
-local myColor = MainTab:ColorPicker({
-    Name = "ESP Color",
-    Default = Color3.fromRGB(255, 0, 0),
-    Callback = function(color)
-        print("Color:", color)
-    end
-})
-
-myColor.Set(Color3.fromRGB(0, 255, 0))
-print(myColor.Get())
+local c = Main:ColorPicker({ Name = "ESP", Default = Color3.fromRGB(255,0,0),
+    Flag = "esp", Callback = function(col) print(col) end })
+c.Set(Color3.fromRGB(0,255,0)); print(c.Get())
 ```
 
-### Dropdown
+### Dropdown (overlay, scrollable, max 3 visible)
 ```lua
-local myDrop = MainTab:Dropdown({
-    Name = "Select Mode",
-    Options = {"Easy", "Medium", "Hard"},
+local d = Main:Dropdown({
+    Name = "Mode",
+    Options = {"Easy","Medium","Hard","Insane","Nightmare"},
     Default = "Easy",
-    Callback = function(option)
-        print("Selected:", option)
-    end
+    Flag = "mode",
+    Callback = function(o) print(o) end
 })
-
-myDrop.Set("Hard")
-myDrop.Refresh({"New1", "New2", "New3"})  -- update option list
-print(myDrop.Get())
+d.Set("Hard")
+d.Refresh({"A","B","C"})
+print(d.Get())
 ```
+The dropdown popup renders **above all other UI** (never clipped). If more than 3 options exist, the list **scrolls**.
 
 ### Notify
 ```lua
-Window:Notify({
-    Title = "Success",
-    Content = "Script loaded successfully!",
-    Duration = 4
-})
+Window:Notify({ Title = "Done", Content = "Loaded!", Duration = 4 })
 ```
 
-### TextLabel (Label)
+### Label / Paragraph / ParagraphImage / ParagraphUpdateLog / ParagraphSocials
+*(unchanged API — see usage below)*
 ```lua
-local lbl = MainTab:Label({ Text = "Welcome!" })
--- shorthand:
-MainTab:Label("Hello World")
-
-lbl.Set("Updated text")
+Main:Label("Welcome!")
+Main:Paragraph({ Title="Info", Content="Multi-line text." })
+Main:ParagraphImage({ Title="Featured", Content="...", Image="rbxassetid://123", ImageHeight=120 })
+Main:ParagraphUpdateLog({ Title="Changelog", Version="v1.1.0", Content="- New stuff" })
+Main:ParagraphSocials({ Title="Socials", Socials={ {Name="Discord", Link="https://..."} } })
 ```
 
-### Paragraph
+### Input
 ```lua
-local para = MainTab:Paragraph({
-    Title = "Information",
-    Content = "This is a multi-line paragraph block describing something useful."
-})
-
-para.SetTitle("New Title")
-para.SetContent("Updated content here.")
-```
-
-### Paragraph IMAGE
-```lua
-local paraImg = MainTab:ParagraphImage({
-    Title = "Featured",
-    Content = "Check out this cool image.",
-    Image = "rbxassetid://1234567890",
-    ImageHeight = 120
-})
-
-paraImg.SetImage("rbxassetid://9876543210")
-paraImg.SetTitle("New Title")
-paraImg.SetContent("New content.")
-```
-
-### Paragraph Update Log & Image
-```lua
-local log = MainTab:ParagraphUpdateLog({
-    Title = "Update Log",
-    Version = "v1.2.0",
-    Image = "rbxassetid://1234567890",   -- optional
-    ImageHeight = 110,
-    Content = "- Added Keybind element\n- Fixed dropdown bug\n- New dark theme"
-})
-
-log.SetContent("- Hotfix applied")
-```
-
-### Paragraph Socials (Copy Link)
-```lua
-MainTab:ParagraphSocials({
-    Title = "Our Socials",
-    Socials = {
-        { Name = "Discord",  Link = "https://discord.gg/example" },
-        { Name = "YouTube",  Link = "https://youtube.com/@example" },
-        { Name = "GitHub",   Link = "https://github.com/example" },
-    }
-})
--- Clicking a row copies the link (uses setclipboard) and shows a notification.
-```
-
-### Input Box
-```lua
-local myInput = MainTab:Input({
-    Name = "Username",
-    Placeholder = "Enter name...",
-    Default = "",
-    Callback = function(text, enterPressed)
-        print("Input:", text, "| Enter:", enterPressed)
-    end
-})
-
-myInput.Set("Hello")
-print(myInput.Get())
+local i = Main:Input({ Name="Name", Placeholder="...", Flag="name",
+    Callback=function(txt, enter) print(txt, enter) end })
+i.Set("hi"); print(i.Get())
 ```
 
 ### Keybind
 ```lua
-local myKey = MainTab:Keybind({
-    Name = "Aimbot Key",
-    Default = Enum.KeyCode.E,
-    Callback = function(key)
-        print("Keybind pressed:", key.Name)
-    end
-})
-
-myKey.Set(Enum.KeyCode.F)
-print(myKey.Get())
+local k = Main:Keybind({ Name="Fly", Default=Enum.KeyCode.F, Flag="flykey",
+    Callback=function(key) print(key.Name) end })
+k.Set(Enum.KeyCode.G); print(k.Get())
 ```
 
 ---
 
-## Runtime Theme Switching
-
-```lua
-Window:SetTheme("dark")
--- Note: applies to NEW elements created after the call.
-```
+## Mobile Support
+- A floating **≡** button appears on touch devices to open/close the UI (draggable).
+- Window auto-resizes smaller and clamps to the viewport.
+- Sliders, dropdowns, and color pickers all respond to **touch** input.
 
 ---
 
@@ -229,86 +155,53 @@ local Lib = loadstring(game:HttpGet("YOUR_URL/Source.luau"))()
 local Window = Lib:CreateWindow({
     Name = "SarXNight Hub",
     Theme = "default",
-    ToggleKey = Enum.KeyCode.RightShift
+    ToggleKey = Enum.KeyCode.RightShift,
+    ConfigFolder = "SarXNight",
+    ConfigName = "config",
+    LoadingScreen = { Subtitle = "Initializing..." }
 })
 
 local Main = Window:CreateTab("Main")
-local Info = Window:CreateTab("Info")
+local Settings = Window:CreateTab("Settings")
 
-Main:Label("Welcome to SarXNight Hub!")
+Main:Toggle({ Name="Auto Farm", Flag="autofarm", Callback=function(s) print(s) end })
+Main:Slider({ Name="Speed", Min=16, Max=100, Default=16, Flag="speed",
+    Callback=function(v) print(v) end })
+Main:Dropdown({ Name="Mode", Options={"A","B","C","D","E"}, Flag="mode",
+    Callback=function(o) print(o) end })
 
-Main:Button({
-    Name = "Notify Me",
-    Callback = function()
-        Window:Notify({ Title = "Hi", Content = "Hello there!", Duration = 3 })
-    end
-})
-
-Main:Toggle({
-    Name = "Auto Farm",
-    Default = false,
-    Callback = function(s) print("AutoFarm:", s) end
-})
-
-Main:Slider({
-    Name = "Speed",
-    Min = 16, Max = 100, Default = 16,
-    Callback = function(v) print(v) end
-})
-
-Main:Dropdown({
-    Name = "Mode",
-    Options = {"A", "B", "C"},
-    Callback = function(o) print(o) end
-})
-
-Main:ColorPicker({
-    Name = "Color",
-    Default = Color3.fromRGB(120, 90, 220),
-    Callback = function(c) print(c) end
-})
-
-Main:Keybind({
-    Name = "Fly Key",
-    Default = Enum.KeyCode.F,
-    Callback = function() print("Fly toggled") end
-})
-
-Info:ParagraphUpdateLog({
-    Title = "Changelog",
-    Version = "v1.0.0",
-    Content = "- Initial release\n- 13 elements\n- 2 themes"
-})
-
-Info:ParagraphSocials({
-    Title = "Socials",
-    Socials = {
-        { Name = "Discord", Link = "https://discord.gg/example" }
-    }
-})
+Settings:Button({ Name="Save Config", Callback=function() Window:SaveConfig() end })
+Settings:Button({ Name="Load Config", Callback=function() Window:LoadConfig() end })
 ```
 
 ---
 
 ## Element Reference Table
 
-| Element | Method | Returns |
-|---|---|---|
-| Tab | `Window:CreateTab(cfg)` | tab object |
-| Button | `Tab:Button(cfg)` | TextButton |
-| Toggle | `Tab:Toggle(cfg)` | `{Set, Get}` |
-| Slider | `Tab:Slider(cfg)` | `{Set, Get}` |
-| ColorPicker | `Tab:ColorPicker(cfg)` | `{Set, Get}` |
-| Dropdown | `Tab:Dropdown(cfg)` | `{Set, Get, Refresh}` |
-| Notify | `Window:Notify(cfg)` | Frame |
-| Label | `Tab:Label(cfg)` | `{Set}` |
-| Paragraph | `Tab:Paragraph(cfg)` | `{SetTitle, SetContent}` |
-| Paragraph Image | `Tab:ParagraphImage(cfg)` | `{SetImage, SetTitle, SetContent}` |
-| Update Log | `Tab:ParagraphUpdateLog(cfg)` | `{SetContent}` |
-| Socials | `Tab:ParagraphSocials(cfg)` | Frame |
-| Input | `Tab:Input(cfg)` | `{Set, Get}` |
-| Keybind | `Tab:Keybind(cfg)` | `{Set, Get}` |
+| Element | Method | Returns | Flag |
+|---|---|---|---|
+| Tab | `Window:CreateTab(cfg)` | tab object | — |
+| Button | `Tab:Button(cfg)` | TextButton | — |
+| Toggle | `Tab:Toggle(cfg)` | `{Set, Get}` | ✅ |
+| Slider | `Tab:Slider(cfg)` | `{Set, Get}` | ✅ |
+| ColorPicker | `Tab:ColorPicker(cfg)` | `{Set, Get}` | ✅ |
+| Dropdown | `Tab:Dropdown(cfg)` | `{Set, Get, Refresh}` | ✅ |
+| Notify | `Window:Notify(cfg)` | Frame | — |
+| Label | `Tab:Label(cfg)` | `{Set}` | — |
+| Paragraph | `Tab:Paragraph(cfg)` | `{SetTitle, SetContent}` | — |
+| Paragraph Image | `Tab:ParagraphImage(cfg)` | `{SetImage, SetTitle, SetContent}` | — |
+| Update Log | `Tab:ParagraphUpdateLog(cfg)` | `{SetContent}` | — |
+| Socials | `Tab:ParagraphSocials(cfg)` | Frame | — |
+| Input | `Tab:Input(cfg)` | `{Set, Get}` | ✅ |
+| Keybind | `Tab:Keybind(cfg)` | `{Set, Get}` | ✅ |
+
+| Window Method | Description |
+|---|---|
+| `Window:SaveConfig()` | Save all flagged elements to JSON |
+| `Window:LoadConfig()` | Load JSON and apply to flagged elements |
+| `Window:Notify(cfg)` | Show a notification |
+| `Window:SetTheme(name)` | Switch theme (affects new elements) |
 
 ---
 
-*SarXNightLib v1.0.0 — Classic/Rework 2022 style*
+*SarXNightLib v1.1.0 — 2023 Redesign*
