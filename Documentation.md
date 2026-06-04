@@ -6,8 +6,6 @@ A classic/rework 2022-style Roblox UI library.
 
 ```lua
 local SarXNightLib = loadstring(game:HttpGet("YOUR_RAW_URL/Source.luau"))()
--- OR require it if placed in ReplicatedStorage:
--- local SarXNightLib = require(path.to.Source)
 ```
 
 ## Themes
