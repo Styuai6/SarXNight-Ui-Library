@@ -14,7 +14,7 @@
 
 ## Loading
 ```lua
-local SarXNightLib = loadstring(game:HttpGet("YOUR_RAW_URL/Source.luau"))()
+local SarXNightLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Styuai6/SarXNight-Ui-Library/refs/heads/main/Source.luau"))()
 ```
 
 ---
