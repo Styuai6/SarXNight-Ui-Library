@@ -5,8 +5,11 @@ local LocalPlayer = game:GetService("Players").LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 
+-- Mobile detection
+local IsMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
 local SarXNightLib = {
-	Version = "1.2.2-BETA",
+	Version = "1.2.5-BETA",
 	Elements = {},
 	ThemeObjects = {},
 	Connections = {},
@@ -80,13 +83,13 @@ local function AddConnection(Signal, Function)
 end
 
 task.spawn(function()
-	while SarXNightLib:IsRunning() do task.wait() end
+	while SarXNightLib:IsRunning() do task.wait(0.5) end  -- perf: less polling
 	for _, Connection in next, SarXNightLib.Connections do
 		Connection:Disconnect()
 	end
 end)
 
--- FIXED dragging (Mouse + Touch). Used by window AND mobile toggle.
+-- LEGACY dragging (Mouse + Touch) — smooth tween like old Orion.
 local function AddDraggingFunctionality(DragPoint, Main)
 	local Dragging = false
 	local DragInput, MousePos, FramePos
@@ -114,7 +117,10 @@ local function AddDraggingFunctionality(DragPoint, Main)
 	AddConnection(UserInputService.InputChanged, function(Input)
 		if Input == DragInput and Dragging then
 			local Delta = Input.Position - MousePos
-			Main.Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)
+			-- legacy smooth tween drag
+			TweenService:Create(Main, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+				Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)
+			}):Play()
 		end
 	end)
 end
@@ -344,7 +350,7 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 	})
 }), {
 	Position = UDim2.new(1, -25, 1, -25),
-	Size = UDim2.new(0, 300, 1, -25),
+	Size = UDim2.new(0, IsMobile and 250 or 300, 1, -25),
 	AnchorPoint = Vector2.new(1, 1),
 	Parent = SarX
 })
@@ -394,7 +400,6 @@ function SarXNightLib:MakeNotification(NotificationConfig)
 		})
 
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
-
 		task.wait(NotificationConfig.Time - 0.88)
 		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
@@ -403,7 +408,6 @@ function SarXNightLib:MakeNotification(NotificationConfig)
 		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
 		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
 		task.wait(0.05)
-
 		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0), 'In', 'Quint', 0.8, true)
 		task.wait(1.35)
 		NotificationFrame:Destroy()
@@ -430,7 +434,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 	local FirstTab = true
 	local Minimized = false
 	local UIHidden = false
-	local Tabs = {}  -- for search
+	local Tabs = {}
 
 	WindowConfig = WindowConfig or {}
 	WindowConfig.Name = WindowConfig.Name or "SarXNightLib"
@@ -442,7 +446,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
 	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
 	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://8834748103"
-	-- NEW: custom image for the mobile floating toggle button
 	WindowConfig.InterfaceToggleImageId = WindowConfig.InterfaceToggleImageId or "rbxassetid://8834748103"
 	SarXNightLib.Folder = WindowConfig.ConfigFolder
 	SarXNightLib.SaveCfg = WindowConfig.SaveConfig
@@ -454,20 +457,27 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		end
 	end
 
-	-- SEARCH BAR for tabs
+	-- v1.2.5 MOBILE-FRIENDLY sizing
+	local winW = IsMobile and 470 or 625
+	local winH = IsMobile and 300 or 350
+	local sidebarW = IsMobile and 130 or 160
+	local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
+	winW = math.min(winW, vp.X - 16)
+	winH = math.min(winH, vp.Y - 16)
+
+	-- SEARCH BAR (FIXED color: now uses theme Main with proper text color)
 	local SearchBox = AddThemeObject(Create("TextBox", {
 		Size = UDim2.new(1, -16, 0, 28),
 		Position = UDim2.new(0, 8, 0, 8),
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		Text = "",
-		PlaceholderText = "🔍 Search tabs...",
-		PlaceholderColor3 = Color3.fromRGB(150, 150, 150),
-		TextColor3 = Color3.fromRGB(255, 255, 255),
+		PlaceholderText = "Search tabs...",
 		Font = Enum.Font.Gotham,
 		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false
-	}), "Second")
+	}), "Text")  -- FIX: text color from theme (not hardcoded white)
+	AddThemeObject(SetProps(SearchBox, { BackgroundColor3 = SarXNightLib.Themes[SarXNightLib.SelectedTheme].Main }), "Main")
+	SearchBox.PlaceholderColor3 = SarXNightLib.Themes[SarXNightLib.SelectedTheme].TextDark
 	SetChildren(SearchBox, {
 		Create("UICorner", { CornerRadius = UDim.new(0, 6) }),
 		MakeElement("Padding", 4, 10, 6, 4),
@@ -486,15 +496,11 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		TabHolder.CanvasSize = UDim2.new(0, 0, 0, TabHolder.UIListLayout.AbsoluteContentSize.Y + 16)
 	end)
 
-	-- Search filter logic
+	-- Search filter (perf: only touches frame visibility)
 	AddConnection(SearchBox:GetPropertyChangedSignal("Text"), function()
 		local query = SearchBox.Text:lower()
 		for _, tab in next, Tabs do
-			if query == "" then
-				tab.Frame.Visible = true
-			else
-				tab.Frame.Visible = tab.Name:lower():find(query, 1, true) ~= nil
-			end
+			tab.Frame.Visible = (query == "") or (tab.Name:lower():find(query, 1, true) ~= nil)
 		end
 	end)
 
@@ -525,7 +531,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 	})
 
 	local WindowStuff = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
-		Size = UDim2.new(0, 160, 1, -50),
+		Size = UDim2.new(0, sidebarW, 1, -50),
 		Position = UDim2.new(0, 0, 0, 50)
 	}), {
 		AddThemeObject(SetProps(MakeElement("Frame"), {
@@ -571,8 +577,8 @@ function SarXNightLib:MakeWindow(WindowConfig)
 
 	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
 		Parent = SarX,
-		Position = UDim2.new(0.5, -312, 0.5, -175),
-		Size = UDim2.new(0, 625, 0, 350),
+		Position = UDim2.new(0.5, -winW/2, 0.5, -winH/2),
+		Size = UDim2.new(0, winW, 0, winH),
 		ClipsDescendants = true
 	}), {
 		SetChildren(SetProps(MakeElement("TFrame"), {
@@ -609,7 +615,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 
 	AddDraggingFunctionality(DragPoint, MainWindow)
 
-	-- FIXED Mobile floating toggle button (drag works now, click toggles)
+	-- Mobile floating toggle (LEGACY draggable + click-to-toggle)
 	local MobileToggle = SetChildren(SetProps(MakeElement("Button"), {
 		Parent = SarX,
 		Size = UDim2.new(0, 46, 0, 46),
@@ -628,7 +634,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		})
 	})
 
-	-- Click vs Drag detection (fix broken drag)
+	-- Click vs Drag detection (LEGACY drag + tap toggle)
 	do
 		local startPos, moved
 		AddConnection(MobileToggle.InputBegan, function(Input)
@@ -656,7 +662,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 				startPos = nil
 			end
 		end)
-		AddDraggingFunctionality(MobileToggle, MobileToggle)
+		AddDraggingFunctionality(MobileToggle, MobileToggle)  -- LEGACY drag
 	end
 
 	AddConnection(CloseBtn.MouseButton1Up, function()
@@ -679,7 +685,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 
 	AddConnection(MinimizeBtn.MouseButton1Up, function()
 		if Minimized then
-			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, 625, 0, 350)}):Play()
+			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, winW, 0, winH)}):Play()
 			MinimizeBtn.Ico.Image = "rbxassetid://7072719338"
 			task.wait(.02)
 			MainWindow.ClipsDescendants = false
@@ -696,7 +702,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		Minimized = not Minimized
 	end)
 
-	-- NEW reworked loading screen with TEXT EFFECT (typewriter) animation
+	-- Loading screen with typewriter effect
 	local function LoadSequence()
 		MainWindow.Visible = false
 		MobileToggle.Visible = false
@@ -743,11 +749,9 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			ZIndex = 102
 		})
 
-		-- Pop-in logo with bounce
 		TweenService:Create(Logo, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 56, 0, 56)}):Play()
 		task.wait(0.4)
 
-		-- TYPEWRITER text effect
 		local full = WindowConfig.IntroText
 		for i = 1, #full do
 			Text.Text = string.sub(full, 1, i) .. "▌"
@@ -755,10 +759,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		end
 		Text.Text = full
 
-		-- progress bar fill synced
 		TweenService:Create(Fill, TweenInfo.new(1.1, Enum.EasingStyle.Quad), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-
-		-- pulsing accent glow on logo
 		task.spawn(function()
 			for _ = 1, 3 do
 				TweenService:Create(Logo, TweenInfo.new(0.35), {ImageTransparency = 0.4}):Play()
@@ -769,8 +770,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		end)
 
 		task.wait(1.3)
-
-		-- Fade out everything
 		TweenService:Create(Logo, TweenInfo.new(.35), {ImageTransparency = 1, Size = UDim2.new(0, 70, 0, 70)}):Play()
 		TweenService:Create(Text, TweenInfo.new(.35), {TextTransparency = 1}):Play()
 		TweenService:Create(Bar, TweenInfo.new(.35), {BackgroundTransparency = 1}):Play()
@@ -811,12 +810,11 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			}), "Text")
 		})
 
-		-- register for search
 		table.insert(Tabs, { Name = TabConfig.Name, Frame = TabFrame })
 
 		local Container = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 5), {
-			Size = UDim2.new(1, -160, 1, -50),
-			Position = UDim2.new(0, 160, 0, 50),
+			Size = UDim2.new(1, -sidebarW, 1, -50),
+			Position = UDim2.new(0, sidebarW, 0, 50),
 			Parent = MainWindow,
 			Visible = false,
 			Name = "ItemContainer"
@@ -859,7 +857,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 		local ElementFunction = {}
 		local ItemParent = Container
 
-		-- LABEL
 		function ElementFunction:AddLabel(Text)
 			local LabelFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 				Size = UDim2.new(1, 0, 0, 30),
@@ -877,7 +874,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return { Set = function(_, t) LabelFrame.Content.Text = t end }
 		end
 
-		-- PARAGRAPH
 		function ElementFunction:AddParagraph(Text, Content)
 			Text = Text or "Text"
 			Content = Content or "Content"
@@ -909,7 +905,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return { Set = function(_, t) ParagraphFrame.Content.Text = t end }
 		end
 
-		-- PARAGRAPH IMAGE
 		function ElementFunction:AddParagraphImage(Config)
 			Config = Config or {}
 			local Frame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
@@ -946,9 +941,32 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			}
 		end
 
-		-- PARAGRAPH UPDATE LOG
+		-- UPDATE LOG: bullet RichText (no raw "\n-"), accepts table of lines
 		function ElementFunction:AddParagraphUpdateLog(Config)
 			Config = Config or {}
+
+			-- Build pretty bullet content
+			local function buildContent(content)
+				if type(content) == "table" then
+					local lines = {}
+					for _, line in ipairs(content) do
+						table.insert(lines, "• " .. tostring(line))
+					end
+					return table.concat(lines, "\n")
+				elseif type(content) == "string" then
+					-- convert leading "- " into bullets, strip raw dashes
+					local out = {}
+					for line in (content .. "\n"):gmatch("(.-)\n") do
+						line = line:gsub("^%s*%-%s*", ""):gsub("^%s+", "")
+						if line ~= "" then
+							table.insert(out, "• " .. line)
+						end
+					end
+					return table.concat(out, "\n")
+				end
+				return ""
+			end
+
 			local Children = {
 				MakeElement("Padding", 12, 12, 12, 12),
 				MakeElement("List", 0, 8),
@@ -976,13 +994,15 @@ function SarXNightLib:MakeWindow(WindowConfig)
 					Name = "Img"
 				}))
 			end
-			table.insert(Children, AddThemeObject(SetProps(MakeElement("Label", Config.Content or "- Stuff", 13), {
+			table.insert(Children, AddThemeObject(SetProps(MakeElement("Label", buildContent(Config.Content or {}), 13), {
 				Size = UDim2.new(1, 0, 0, 0),
 				AutomaticSize = Enum.AutomaticSize.Y,
 				Font = Enum.Font.GothamSemibold,
 				TextWrapped = true,
+				RichText = true,
 				Name = "Content"
 			}), "TextDark"))
+
 			local Frame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 				Size = UDim2.new(1, 0, 0, 0),
 				AutomaticSize = Enum.AutomaticSize.Y,
@@ -991,10 +1011,9 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			if Frame:FindFirstChild("Img") then
 				Create("UICorner", { CornerRadius = UDim.new(0, 6), Parent = Frame.Img })
 			end
-			return { SetContent = function(_, c) Frame.Content.Text = c end }
+			return { SetContent = function(_, c) Frame.Content.Text = buildContent(c) end }
 		end
 
-		-- PARAGRAPH SOCIALS
 		function ElementFunction:AddParagraphSocials(Config)
 			Config = Config or {}
 			local Socials = Config.Socials or {}
@@ -1041,7 +1060,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return Frame
 		end
 
-		-- BUTTON
 		function ElementFunction:AddButton(ButtonConfig)
 			ButtonConfig = ButtonConfig or {}
 			ButtonConfig.Name = ButtonConfig.Name or "Button"
@@ -1080,7 +1098,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return Button
 		end
 
-		-- TOGGLE
 		function ElementFunction:AddToggle(ToggleConfig)
 			ToggleConfig = ToggleConfig or {}
 			ToggleConfig.Name = ToggleConfig.Name or "Toggle"
@@ -1141,7 +1158,7 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return Toggle
 		end
 
-		-- SLIDER (FIXED design + input box + mobile)
+		-- SLIDER REWORK: Big bar (Orion-style) with value-in-bar + input box
 		function ElementFunction:AddSlider(SliderConfig)
 			SliderConfig = SliderConfig or {}
 			SliderConfig.Name = SliderConfig.Name or "Slider"
@@ -1157,73 +1174,82 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			local Slider = {Value = SliderConfig.Default, Save = SliderConfig.Save}
 			local Dragging = false
 
-			-- FIXED: track (background) + fill (foreground), no overlap glitch
-			local SliderFill = SetProps(MakeElement("RoundFrame", SliderConfig.Color, 1, 0), {
+			-- Big bar fill (Orion style — fills inside a tall bar)
+			local SliderDrag = SetChildren(SetProps(MakeElement("RoundFrame", SliderConfig.Color, 0, 5), {
 				Size = UDim2.new(0, 0, 1, 0),
-				Name = "Fill"
-			})
-			local Knob = SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 1, 0), {
-				Size = UDim2.new(0, 14, 0, 14),
-				Position = UDim2.new(1, -7, 0.5, 0),
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				ZIndex = 3,
-				Name = "Knob"
-			})
-			SliderFill.Parent = nil
-
-			local SliderTrack = SetChildren(SetProps(MakeElement("RoundFrame", SarXNightLib.Themes[SarXNightLib.SelectedTheme].Main, 1, 0), {
-				Size = UDim2.new(1, -24, 0, 8),
-				Position = UDim2.new(0, 12, 1, -18),
-				ClipsDescendants = false
+				BackgroundTransparency = 0.3,
+				ClipsDescendants = true
 			}), {
-				SliderFill,
-				Knob
+				AddThemeObject(SetProps(MakeElement("Label", "value", 13), {
+					Size = UDim2.new(1, -12, 0, 14),
+					Position = UDim2.new(0, 12, 0.5, -7),
+					Font = Enum.Font.GothamBold,
+					Name = "Value",
+					TextTransparency = 0
+				}), "Text")
 			})
-			Knob.Parent = SliderFill
 
-			-- Input box
+			local SliderBar = SetChildren(SetProps(MakeElement("RoundFrame", SliderConfig.Color, 0, 5), {
+				Size = UDim2.new(1, -76, 0, 26),
+				Position = UDim2.new(0, 12, 0, 30),
+				BackgroundTransparency = 0.9
+			}), {
+				SetProps(MakeElement("Stroke"), { Color = SliderConfig.Color }),
+				AddThemeObject(SetProps(MakeElement("Label", "value", 13), {
+					Size = UDim2.new(1, -12, 0, 14),
+					Position = UDim2.new(0, 12, 0.5, -7),
+					Font = Enum.Font.GothamBold,
+					Name = "Value",
+					TextTransparency = 0.8
+				}), "Text"),
+				SliderDrag
+			})
+
+			-- Editable input box
 			local ValueInput = AddThemeObject(Create("TextBox", {
-				Size = UDim2.new(0, 60, 0, 22),
-				Position = UDim2.new(1, -72, 0, 8),
+				Size = UDim2.new(0, 60, 0, 26),
+				Position = UDim2.new(1, -68, 0, 30),
 				BackgroundColor3 = SarXNightLib.Themes[SarXNightLib.SelectedTheme].Main,
 				Text = tostring(SliderConfig.Default),
-				TextColor3 = Color3.fromRGB(255, 255, 255),
 				Font = Enum.Font.GothamBold,
 				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				ClearTextOnFocus = false
 			}), "Text")
-			SetChildren(ValueInput, { Create("UICorner", { CornerRadius = UDim.new(0, 4) }) })
+			SetChildren(ValueInput, {
+				Create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+				AddThemeObject(MakeElement("Stroke"), "Stroke")
+			})
 
 			local SliderFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
-				Size = UDim2.new(1, 0, 0, 60),
+				Size = UDim2.new(1, 0, 0, 65),
 				Parent = ItemParent
 			}), {
 				AddThemeObject(SetProps(MakeElement("Label", SliderConfig.Name, 15), {
-					Size = UDim2.new(1, -90, 0, 14),
-					Position = UDim2.new(0, 12, 0, 11),
+					Size = UDim2.new(1, -12, 0, 14),
+					Position = UDim2.new(0, 12, 0, 10),
 					Font = Enum.Font.GothamBold,
 					Name = "Content"
 				}), "Text"),
 				AddThemeObject(MakeElement("Stroke"), "Stroke"),
-				ValueInput,
-				SliderTrack
+				SliderBar,
+				ValueInput
 			}), "Second")
 
 			local function updateFromInput(Input)
-				local scale = math.clamp((Input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
+				local scale = math.clamp((Input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
 				Slider:Set(SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * scale))
 				SaveCfg(game.GameId)
 			end
 
-			AddConnection(SliderTrack.InputBegan, function(Input)
+			AddConnection(SliderBar.InputBegan, function(Input)
 				if Input.UserInputType == Enum.UserInputType.MouseButton1
 				or Input.UserInputType == Enum.UserInputType.Touch then
 					Dragging = true
 					updateFromInput(Input)
 				end
 			end)
-			AddConnection(SliderTrack.InputEnded, function(Input)
+			AddConnection(SliderBar.InputEnded, function(Input)
 				if Input.UserInputType == Enum.UserInputType.MouseButton1
 				or Input.UserInputType == Enum.UserInputType.Touch then
 					Dragging = false
@@ -1244,8 +1270,11 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			function Slider:Set(Value)
 				self.Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
 				local scale = (self.Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min)
-				TweenService:Create(SliderFill, TweenInfo.new(.12, Enum.EasingStyle.Quad), {Size = UDim2.new(scale, 0, 1, 0)}):Play()
-				ValueInput.Text = tostring(self.Value) .. (SliderConfig.ValueName ~= "" and (" " .. SliderConfig.ValueName) or "")
+				TweenService:Create(SliderDrag, TweenInfo.new(.12, Enum.EasingStyle.Quad), {Size = UDim2.fromScale(scale, 1)}):Play()
+				local label = tostring(self.Value) .. (SliderConfig.ValueName ~= "" and (" " .. SliderConfig.ValueName) or "")
+				SliderBar.Value.Text = label
+				SliderDrag.Value.Text = label
+				ValueInput.Text = tostring(self.Value)
 				SliderConfig.Callback(self.Value)
 			end
 
@@ -1254,7 +1283,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return Slider
 		end
 
-		-- DROPDOWN (max 3 visible + scroll)
 		function ElementFunction:AddDropdown(DropdownConfig)
 			DropdownConfig = DropdownConfig or {}
 			DropdownConfig.Name = DropdownConfig.Name or "Dropdown"
@@ -1383,7 +1411,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return Dropdown
 		end
 
-		-- KEYBIND
 		function ElementFunction:AddBind(BindConfig)
 			BindConfig = BindConfig or {}
 			BindConfig.Name = BindConfig.Name or "Bind"
@@ -1461,7 +1488,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return Bind
 		end
 
-		-- TEXTBOX
 		function ElementFunction:AddTextbox(TextboxConfig)
 			TextboxConfig = TextboxConfig or {}
 			TextboxConfig.Name = TextboxConfig.Name or "Textbox"
@@ -1514,7 +1540,6 @@ function SarXNightLib:MakeWindow(WindowConfig)
 			return { Set = function(_, t) TextboxActual.Text = t end, Get = function() return TextboxActual.Text end }
 		end
 
-		-- COLORPICKER (mobile + mouse)
 		function ElementFunction:AddColorpicker(ColorpickerConfig)
 			ColorpickerConfig = ColorpickerConfig or {}
 			ColorpickerConfig.Name = ColorpickerConfig.Name or "Colorpicker"
