@@ -318,7 +318,7 @@ SarXNightLib:Destroy()   -- remove entire UI
 ## Full Example
 
 ```lua
-local Lib = loadstring(game:HttpGet("YOUR_URL/Source.luau"))()
+local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Styuai6/SarXNight-Ui-Library/refs/heads/main/Source.luau"))()
 
 local Window = Lib:MakeWindow({
     Name = "SarXNight Hub",
