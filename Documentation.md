@@ -1,20 +1,20 @@
-# SarXNightLib Documentation — v1.2.5-BETA
+# SarXNightLib v1.3.0 Documentation
 
-> Successor to the discontinued **OrionLib**. Inspired by Orion (thanks!).
+> Inspired by Orion UI Library (**discontinued**). Reworked design v1.3.0.
 
-## What's New in v1.2.5-BETA
-- 📱 **Mobile-friendly sizing** — window auto-shrinks (470×300) on touch devices, sidebar narrows to 130px, and clamps to the viewport.
-- 🕹️ **Legacy dragging** — the window AND mobile ≡ toggle now use the smooth tween-based "legacy Orion" drag.
-- 📝 **Update Log reworked** — no more raw `\n-`! Pass a **table of lines** or a string; they auto-format into clean **• bullets**.
-- 🎨 **New v1.2.5 design** — refined spacing, big-bar slider, themed search box.
-- 📊 **Slider reworked** — **big bar** style like the Orion library (value shown *inside* the bar) + editable input box.
-- 🐛 **Fixed:** search bar white-color issue (now uses theme `Main` background + theme text color).
-- ⚡ **Zero-lag / better performance** — reduced polling, lighter search filter, single render-step connections for colorpicker.
+## What's New in v1.3.0
+- ✅ **Legacy dragging — NO smooth, NO tween** (raw direct position, like old Orion) for both window & toggle
+- ✅ **InterfaceToggle** uses **native `Draggable = true` + `Active = true`** (legacy, no tween) — drag applies **only** to the toggle button, **not** the window
+- ✅ New reworked **Design v1.3.0**
+- ✅ **Mobile-friendly new slider** (taller touch bar, value-in-bar, input box)
+- ✅ **Reworked theme** (deeper purple-night colors)
+- ✅ `MakeWindow` → **`SizeWindow`** (`"Mobile"` / `"PC"` / `"Recommend"`)
+- ✅ New reworked **loading screen** (card + spinning orbit ring + typewriter + bar)
+- ✅ **Fixed Colorpicker drag** (was broken — now tracks active input across the global stream)
 
 ---
 
 ## Loading
-
 ```lua
 local SarXNightLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Styuai6/SarXNight-Ui-Library/refs/heads/main/Source.luau"))()
 ```
@@ -22,417 +22,235 @@ local SarXNightLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/
 ---
 
 ## Creating a Window
-
 ```lua
 local Window = SarXNightLib:MakeWindow({
     Name = "SarXNight Hub",
-    Theme = "Default",                          -- "Default" (Purple&Night) or "Dark"
-    ConfigFolder = "SarXNight",
+    Theme = "Default",                              -- "Default" or "Dark"
     SaveConfig = true,
-    IntroEnabled = true,                         -- typewriter loading screen
-    IntroText = "SarXNight Hub",
+    ConfigFolder = "SarXNightHub",
+    IntroEnabled = true,
+    IntroText = "SarXNight Hub",                     -- typewriter animated
     IntroIcon = "rbxassetid://8834748103",
     ShowIcon = true,
     Icon = "rbxassetid://8834748103",
-    InterfaceToggleImageId = "rbxassetid://8834748103",  -- mobile ≡ button image
-    CloseCallback = function() print("closed") end
+    InterfaceToggleImageId = "rbxassetid://8834748103",  -- image on the floating toggle button
+    SizeWindow = "Recommend",                        -- NEW: "Mobile" | "PC" | "Recommend"
+    CloseCallback = function() print("Closed") end
 })
-
-SarXNightLib:Init()   -- auto-load saved config
 ```
 
-### MakeWindow Config Reference
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | `"SarXNightLib"` | Window title |
-| `Theme` | string | `"Default"` | `"Default"` or `"Dark"` |
-| `ConfigFolder` | string | `Name` | Folder for config files |
-| `SaveConfig` | bool | `false` | Enable per-game config saving |
-| `IntroEnabled` | bool | `true` | Show the typewriter loading screen |
-| `IntroText` | string | `"SarXNightLib"` | Loading screen text (animated) |
-| `IntroIcon` | string | rbxasset | Loading screen logo |
-| `ShowIcon` | bool | `false` | Show icon in top bar |
-| `Icon` | string | rbxasset | Top bar icon |
-| `InterfaceToggleImageId` | string | rbxasset | Image inside the mobile ≡ button |
-| `CloseCallback` | function | empty | Called when UI is closed/hidden |
-
----
-
-## Themes
-
-| Theme | Description | Accent |
+### `SizeWindow` option (NEW)
+| Value | Size | Sidebar |
 |---|---|---|
-| `Default` | SarXNight Purple & Night | Purple `(128,96,232)` |
-| `Dark` | Pure dark | Blue `(0,175,255)` |
+| `"Mobile"` | 470 × 300 | 130 |
+| `"PC"` | 625 × 350 | 160 |
+| `"Recommend"` | Auto — picks Mobile on touch devices, PC on desktop | auto |
 
-### Switch theme at runtime
-```lua
-SarXNightLib:SetTheme("Dark")     -- updates ALL existing elements live
-SarXNightLib:SetTheme("Default")
-```
+> The window is also auto-clamped to the viewport so it never exceeds the screen.
 
 ---
 
-## Search Bar
+## Dragging Behavior (v1.3.0)
+| Element | Method | Smooth/Tween |
+|---|---|---|
+| **Window** | Legacy direct position via top-bar drag point | ❌ No smooth, no tween |
+| **Interface Toggle** | Native Roblox `Draggable = true` + `Active = true` | ❌ No smooth, no tween |
 
-Every window has a **search bar** at the top of the sidebar — type to filter tabs by name.
-The white-color bug is **fixed**; it now properly uses the theme's background and text colors.
+- Window dragging is **raw legacy** — instant 1:1 follow, no easing.
+- The floating toggle is a real **`ImageButton`** with `.Draggable = true` and `.Active = true`. Roblox's built-in drag handles its movement (legacy, instant). A 6px move-threshold separates **tap** (toggle the UI) from **drag** (reposition).
+- The toggle drag is **isolated** — it never moves the window.
 
 ---
 
-## Tabs (no sections)
-
+## Creating a Tab
 ```lua
-local Main = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483345998"   -- optional, "" = no icon
-})
+local Main = Window:MakeTab({ Name = "Main", Icon = "rbxassetid://7733964640" })
+local Info = Window:MakeTab({ Name = "Info" })
 ```
-Tabs are searchable and the first tab is auto-selected.
+
+The **search bar** above the tab list filters tabs live by name (automatic).
 
 ---
 
 ## Elements
 
-### Label
-```lua
-local lbl = Main:AddLabel("Hello World")
-lbl:Set("Updated text")
-```
-
-### Paragraph
-```lua
-local p = Main:AddParagraph("Title", "Some long content text.")
-p:Set("New content")
-```
-
-### Paragraph Image
-```lua
-local pi = Main:AddParagraphImage({
-    Title = "Featured",
-    Content = "Check this out.",
-    Image = "rbxassetid://1234567890",
-    ImageHeight = 110
-})
-pi:SetImage("rbxassetid://9999")
-pi:SetTitle("New Title")
-pi:SetContent("New body")
-```
-
-### Paragraph Update Log (NEW formatting — no `\n-`)
-You can now pass a **table of lines** (recommended) or a string. Both auto-format into clean **• bullets**.
-
-```lua
--- Recommended: table of lines
-Main:AddParagraphUpdateLog({
-    Title = "Changelog",
-    Version = "v1.2.5-BETA",
-    Image = "rbxassetid://1234567890",   -- optional
-    ImageHeight = 100,
-    Content = {
-        "Mobile-friendly sizing",
-        "Legacy dragging for window + toggle",
-        "Big-bar slider (Orion style)",
-        "Fixed search bar color",
-        "Zero-lag performance",
-    }
-})
-
--- Also works with a string (leading dashes auto-stripped → bullets)
-Main:AddParagraphUpdateLog({
-    Title = "Changelog",
-    Version = "v1.2.5",
-    Content = "- Added X\n- Fixed Y\n- Improved Z"
-})
-```
-> Output renders as:
-> ```
-> • Added X
-> • Fixed Y
-> • Improved Z
-> ```
-
-### Paragraph Socials (copy link)
-```lua
-Main:AddParagraphSocials({
-    Title = "Our Socials",
-    Socials = {
-        { Name = "Discord", Link = "https://discord.gg/example" },
-        { Name = "YouTube", Link = "https://youtube.com/@example" },
-    }
-})
-```
-
 ### Button
 ```lua
-local btn = Main:AddButton({
-    Name = "Execute",
-    Icon = "rbxassetid://3944703587",   -- optional
-    Callback = function() print("clicked") end
-})
-btn:Set("New Label")
+Main:AddButton({ Name = "Click", Callback = function() print("hi") end })
 ```
 
 ### Toggle
 ```lua
-local t = Main:AddToggle({
-    Name = "Auto Farm",
-    Default = false,
-    Flag = "autofarm", Save = true,
-    Callback = function(state) print(state) end
-})
+local t = Main:AddToggle({ Name = "God", Default = false, Flag = "God", Save = true,
+    Callback = function(v) print(v) end })
 t:Set(true)
-print(t.Value)
 ```
 
-### Slider (REWORKED — big bar, Orion style)
-The slider is now a **big bar** with the value displayed **inside the bar**, plus an editable input box on the right.
-
+### Slider (mobile-friendly v1.3.0)
 ```lua
 local s = Main:AddSlider({
-    Name = "Walk Speed",
-    Min = 16,
-    Max = 200,
-    Increment = 1,
-    Default = 16,
-    ValueName = "spd",
-    Color = Color3.fromRGB(128, 96, 232),  -- optional
-    Flag = "speed", Save = true,
+    Name = "Speed", Min = 16, Max = 200, Increment = 1, Default = 16,
+    ValueName = "spd", Flag = "Speed", Save = true,
     Callback = function(v) print(v) end
 })
 s:Set(100)
-print(s.Value)
 ```
-> - Drag anywhere along the **big bar** (touch supported).
-> - The value also shows **inside the fill** and **on the bar**.
-> - Type an exact number in the box on the right.
+> Big bar with the value shown **inside** the fill, a **taller touch target on mobile** (32px vs 28px), and an editable **input box** on the right.
 
-### Dropdown (3 visible + scroll)
+### Dropdown (max 3 visible + scroll)
 ```lua
 local d = Main:AddDropdown({
-    Name = "Mode",
-    Options = {"Easy","Medium","Hard","Insane","Nightmare"},
-    Default = "Easy",
-    Flag = "mode", Save = true,
-    Callback = function(option) print(option) end
+    Name = "Mode", Options = {"A","B","C","D","E"}, Default = "A",
+    Flag = "Mode", Save = true, Callback = function(o) print(o) end
 })
-d:Set("Hard")
-d:Refresh({"A","B","C"}, true)   -- (newOptions, deleteOld)
-print(d.Value)
+d:Set("C")
+d:Refresh({"X","Y","Z"}, true)
 ```
 
-### Keybind (Bind)
+### Colorpicker (FIXED drag — mobile + mouse)
 ```lua
-local k = Main:AddBind({
-    Name = "Fly Toggle",
-    Default = Enum.KeyCode.F,
-    Hold = false,
-    Flag = "flykey", Save = true,
-    Callback = function() print("Fly pressed") end
-})
-k:Set(Enum.KeyCode.G)
-print(k.Value)
+Main:AddColorpicker({ Name = "ESP", Default = Color3.fromRGB(255,0,0),
+    Flag = "ESP", Save = true, Callback = function(c) print(c) end })
+```
+> Drag now works reliably. The picker tracks the **active input** (saturation/value box or hue strip) across the global input stream instead of relying on per-frame RenderStepped capture.
+
+### Keybind
+```lua
+Main:AddBind({ Name = "Fly", Default = Enum.KeyCode.F, Flag = "Fly", Save = true,
+    Callback = function() print("fly") end })
 ```
 
-### Textbox
+### Textbox / Input
 ```lua
-local tb = Main:AddTextbox({
-    Name = "Username",
-    Default = "",
-    TextDisappear = false,
-    Callback = function(text) print(text) end
-})
-tb:Set("Hello")
-print(tb.Get())
+local box = Main:AddTextbox({ Name = "Name", Default = "",
+    TextDisappear = false, Callback = function(t) print(t) end })
+box:Set("Hello"); print(box:Get())
 ```
 
-### Colorpicker (mobile-friendly)
+### Label & Paragraph
 ```lua
-local c = Main:AddColorpicker({
-    Name = "ESP Color",
-    Default = Color3.fromRGB(128, 96, 232),
-    Flag = "espcolor", Save = true,
-    Callback = function(color) print(color) end
-})
-c:Set(Color3.fromRGB(0, 255, 0))
-print(c.Value)
+Main:AddLabel("Welcome!")
+Main:AddParagraph("Title", "Body content")
 ```
-> Both the saturation/value square and the hue strip support **touch** on mobile,
-> using a single render-step connection per drag for **better performance**.
+
+### Paragraph Image
+```lua
+Info:AddParagraphImage({ Title = "Banner", Content = "Preview",
+    Image = "rbxassetid://4384403532", ImageHeight = 110 })
+```
+
+### Paragraph Update Log (bullet formatting + optional image)
+```lua
+-- Pass a TABLE of lines (auto-bulleted with •), or a "-" string
+Info:AddParagraphUpdateLog({
+    Title = "Changelog", Version = "v1.3.0",
+    Image = "rbxassetid://4384403532",   -- optional
+    Content = {
+        "Legacy dragging (no smooth/no tween)",
+        "Native Draggable toggle",
+        "New design v1.3.0",
+        "Mobile-friendly slider",
+        "Fixed colorpicker drag"
+    }
+})
+```
+
+### Paragraph Socials (Copy Link)
+```lua
+Info:AddParagraphSocials({ Title = "Socials", Socials = {
+    { Name = "Discord", Link = "https://discord.gg/example" },
+    { Name = "YouTube", Link = "https://youtube.com/@example" }
+}})
+```
 
 ---
 
 ## Notifications
-
 ```lua
-SarXNightLib:MakeNotification({
-    Name = "Success",
-    Content = "Script loaded successfully!",
-    Image = "rbxassetid://4384403532",   -- optional
-    Time = 5
-})
+SarXNightLib:MakeNotification({ Name = "Hi", Content = "Loaded!", Time = 5 })
 ```
 
 ---
 
-## Config System
-
-Add a `Flag` and `Save = true` to any stateful element. Config is saved
-automatically per **GameId** on change.
-
+## Config Saving
 ```lua
-SarXNightLib:Init()   -- auto-loads <ConfigFolder>/<GameId>.txt
+-- after building everything:
+SarXNightLib:Init()
 ```
-Supported: **Toggle, Slider, Dropdown, Bind, Colorpicker**.
+Give elements `Flag` + `Save = true`. Supported: Toggle, Slider, Dropdown, Colorpicker, Bind.
 
 ---
 
-## Mobile Support
-
-- A draggable floating **≡** button (uses `InterfaceToggleImageId`) opens/closes the UI.
-- **Legacy dragging** (smooth tween) for both the window and the toggle.
-- **Tap vs drag** detection — a quick tap toggles, holding & moving drags.
-- Window auto-resizes smaller (470×300) and the sidebar narrows (130px).
-- Sliders, dropdowns, colorpicker and dragging all support **touch**.
-
----
-
-## Performance (Zero-lag improvements in v1.2.5)
-
-- Idle cleanup loop polls every **0.5s** instead of every frame.
-- Search filter only flips frame **visibility** (no rebuilds).
-- Colorpicker uses **one** `RenderStepped` connection per active drag and disconnects on release.
-- Slider uses lightweight `InputChanged` instead of per-frame stepping.
-
----
-
-## Hiding / Destroying
-
+## Themes (reworked v1.3.0)
 ```lua
--- Hide: click ✕ (RightShift or ≡ to reopen)
-SarXNightLib:Destroy()   -- remove entire UI
+SarXNightLib:MakeWindow({ Theme = "Dark" })
+SarXNightLib:SetTheme("Dark")  -- runtime switch
 ```
+
+| Theme | Accent | Main |
+|---|---|---|
+| Default | `RGB(140,105,245)` | `RGB(22,20,32)` |
+| Dark | `RGB(0,170,255)` | `RGB(14,14,14)` |
 
 ---
 
-## Full Example
+## Mobile
+- Floating toggle button (custom image via `InterfaceToggleImageId`) — **tap** to open/close, **drag** to reposition (native `Draggable`).
+- **RightShift** reopens on PC.
+- Slider (taller bar), Colorpicker, Dropdown, Bind all support **Touch**.
+- Use `SizeWindow = "Mobile"` (or `"Recommend"`) for the compact 470×300 layout.
 
+---
+
+## Destroy
 ```lua
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Styuai6/SarXNight-Ui-Library/refs/heads/main/Source.luau"))()
-
-local Window = Lib:MakeWindow({
-    Name = "SarXNight Hub",
-    Theme = "Default",
-    ConfigFolder = "SarXNight",
-    SaveConfig = true,
-    IntroEnabled = true,
-    IntroText = "SarXNight Hub",
-    InterfaceToggleImageId = "rbxassetid://8834748103"
-})
-
-local Main = Window:MakeTab({ Name = "Main", Icon = "rbxassetid://4483345998" })
-local Settings = Window:MakeTab({ Name = "Settings", Icon = "rbxassetid://4483345998" })
-local Info = Window:MakeTab({ Name = "Info" })
-
-Main:AddLabel("Welcome!")
-
-Main:AddSlider({
-    Name = "Speed", Min = 16, Max = 200, Default = 16, ValueName = "spd",
-    Flag = "speed", Save = true,
-    Callback = function(v) print("Speed:", v) end
-})
-
-Main:AddToggle({
-    Name = "Auto Farm", Flag = "autofarm", Save = true,
-    Callback = function(s) print("AutoFarm:", s) end
-})
-
-Main:AddDropdown({
-    Name = "Mode", Options = {"A","B","C","D","E"},
-    Flag = "mode", Save = true,
-    Callback = function(o) print("Mode:", o) end
-})
-
-Main:AddColorpicker({
-    Name = "ESP Color", Default = Color3.fromRGB(128, 96, 232),
-    Flag = "esp", Save = true,
-    Callback = function(c) print(c) end
-})
-
-Settings:AddDropdown({
-    Name = "Theme", Options = {"Default", "Dark"}, Default = "Default",
-    Callback = function(t) Lib:SetTheme(t) end
-})
-
-Info:AddParagraphUpdateLog({
-    Title = "Changelog",
-    Version = "v1.2.5-BETA",
-    Content = {
-        "Mobile-friendly sizing",
-        "Legacy dragging for window + toggle",
-        "Big-bar slider (Orion style)",
-        "Update log now uses clean bullets",
-        "Fixed search bar color",
-        "Zero-lag performance",
-    }
-})
-
-Info:AddParagraphSocials({
-    Title = "Socials",
-    Socials = { { Name = "Discord", Link = "https://discord.gg/example" } }
-})
-
-Lib:Init()
+SarXNightLib:Destroy()
 ```
 
 ---
 
-## Element Reference Table
+## Element Reference
 
-| Element | Method | Returns | Flag/Save |
-|---|---|---|---|
-| Tab | `Window:MakeTab(cfg)` | tab object | — |
-| Label | `Tab:AddLabel(text)` | `{Set}` | — |
-| Paragraph | `Tab:AddParagraph(title, content)` | `{Set}` | — |
-| Paragraph Image | `Tab:AddParagraphImage(cfg)` | `{SetImage, SetTitle, SetContent}` | — |
-| Update Log | `Tab:AddParagraphUpdateLog(cfg)` | `{SetContent}` | — |
-| Socials | `Tab:AddParagraphSocials(cfg)` | Frame | — |
-| Button | `Tab:AddButton(cfg)` | `{Set}` | — |
-| Toggle | `Tab:AddToggle(cfg)` | `{Set, Value}` | ✅ |
-| Slider | `Tab:AddSlider(cfg)` | `{Set, Value}` | ✅ |
-| Dropdown | `Tab:AddDropdown(cfg)` | `{Set, Refresh, Value}` | ✅ |
-| Bind | `Tab:AddBind(cfg)` | `{Set, Value}` | ✅ |
-| Textbox | `Tab:AddTextbox(cfg)` | `{Set, Get}` | — |
-| Colorpicker | `Tab:AddColorpicker(cfg)` | `{Set, Value}` | ✅ |
+| Element | Method | Returns |
+|---|---|---|
+| Window | `:MakeWindow(cfg)` | window |
+| Tab | `:MakeTab(cfg)` | tab |
+| Button | `:AddButton(cfg)` | `{Set}` |
+| Toggle | `:AddToggle(cfg)` | `{Set, Value}` |
+| Slider | `:AddSlider(cfg)` | `{Set, Value}` |
+| Dropdown | `:AddDropdown(cfg)` | `{Set, Refresh, Value}` |
+| Colorpicker | `:AddColorpicker(cfg)` | `{Set, Value}` |
+| Keybind | `:AddBind(cfg)` | `{Set, Value}` |
+| Textbox | `:AddTextbox(cfg)` | `{Set, Get}` |
+| Label | `:AddLabel(text)` | `{Set}` |
+| Paragraph | `:AddParagraph(t, c)` | `{Set}` |
+| Paragraph Image | `:AddParagraphImage(cfg)` | `{SetImage, SetTitle, SetContent}` |
+| Update Log | `:AddParagraphUpdateLog(cfg)` | `{SetContent}` |
+| Socials | `:AddParagraphSocials(cfg)` | Frame |
+| Notify | `SarXNightLib:MakeNotification(cfg)` | — |
+| Init | `SarXNightLib:Init()` | — |
+| Theme | `SarXNightLib:SetTheme(name)` | — |
+| Destroy | `SarXNightLib:Destroy()` | — |
 
-| Library Method | Description |
-|---|---|
-| `SarXNightLib:MakeWindow(cfg)` | Create the main window |
-| `SarXNightLib:MakeNotification(cfg)` | Show a notification |
-| `SarXNightLib:SetTheme(name)` | Switch theme live (`"Default"`/`"Dark"`) |
-| `SarXNightLib:Init()` | Auto-load saved config |
-| `SarXNightLib:Destroy()` | Remove the entire UI |
-
----
-
-*SarXNightLib v1.2.5-BETA — successor to OrionLib (discontinued). Inspired by Orion UI Library.*
-```
+*SarXNightLib v1.3.0 — Legacy Dragging • SizeWindow • Reworked Design & Theme • Fixed Colorpicker*
+````
 
 ---
 
-## Summary of v1.2.5-BETA Changes
+## Changelog Summary (v1.3.0)
 
-### ✨ New / Reworked
-1. **Mobile-friendly sizing** — `winW/winH` shrink to `470×300` on touch, sidebar to `130px`, both clamp to viewport.
-2. **Legacy dragging** — `AddDraggingFunctionality` now tweens position (smooth Orion-style) for both the window and the mobile ≡ toggle.
-3. **Update Log reworked** — new `buildContent` helper accepts a **table of lines** or a string, auto-converting to clean `•` bullets (no raw `\n-`). RichText enabled.
-4. **Slider rework (big bar / Orion-style)** — value shows **inside the fill** and **on the bar**, with an editable input box on the right.
-5. **v1.2.5 design** refresh — themed search box, consistent spacing.
+| # | Change | Status |
+|---|--------|--------|
+| 1 | Window drag = **legacy, no smooth, no tween** (raw direct position) | ✅ |
+| 2 | InterfaceToggle = native **`Draggable = true` + `Active = true`** (legacy, toggle only, not window) | ✅ |
+| 3 | New reworked **Design v1.3.0** | ✅ |
+| 4 | **Mobile-friendly slider** (taller touch bar, value-in-bar, input box) | ✅ |
+| 5 | **Reworked theme** (deeper purple-night palette) | ✅ |
+| 6 | `MakeWindow` → **`SizeWindow`** (`Mobile`/`PC`/`Recommend`) | ✅ |
+| 7 | New reworked **loading screen** (card + spinning orbit ring + typewriter + bar) | ✅ |
+| 8 | **Fixed Colorpicker drag** (now tracks active input on the global stream) | ✅ |
 
-### 🐛 Fixes
-6. **Search bar white-color issue** — now registered as a theme object using `Main` background + theme text color + themed placeholder.
-
-### ⚡ Performance (Zero-lag)
-7. Cleanup loop polls every **0.5s** instead of every frame.
-8. Search filter only toggles frame **visibility**.
-9. Colorpicker uses **one** render-step connection per drag (disconnects on release).
+### Key technical notes
+- **Window dragging** changed from the v1.2.5 tween-based drag back to **raw `Main.Position` assignment** — instant, no easing.
+- **Interface toggle** is now an `ImageButton` with `.Draggable = true` and `.Active = true`, so Roblox's native legacy drag moves it (isolated from the window). A 6px threshold still distinguishes tap-to-toggle from drag.
+- **Colorpicker** was broken because the old RenderStepped capture could drop the connection; v1.3.0 uses a simple `ColorActive`/`HueActive` boolean tracked through the single global `InputChanged` stream with `GetMouseLocation()` — works for both mouse and touch.
