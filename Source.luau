@@ -1,7 +1,13 @@
 --[[
     SxiNight UI Library 2026
-    Version: 1.0.0
-    A modern, sleek UI library for Roblox
+    Version: 1.0.1
+    
+    Changelog v1.0.1:
+    - Updated Slider with input textbox
+    - Bigger slider bar
+    - Mobile toggle button (Open/Close interface)
+    - Loading Screen
+    - MakeWindow with Size parameter
 ]]
 
 local SxiNight = {}
@@ -89,13 +95,156 @@ local function MakeDraggable(frame, dragArea)
     end)
 end
 
--- Main Library
+local function GetParent()
+    local parent = CoreGui
+    pcall(function()
+        if gethui then parent = gethui()
+        elseif syn and syn.protect_gui then parent = CoreGui
+        else parent = CoreGui end
+    end)
+    return parent
+end
+
+-- ============================================
+-- LOADING SCREEN
+-- ============================================
+function SxiNight:CreateLoadingScreen(config)
+    config = config or {}
+    local title = config.Title or "SxiNight UI"
+    local subtitle = config.Subtitle or "Loading..."
+    local duration = config.Duration or 3
+    
+    local LoadGui = Create("ScreenGui", {
+        Name = "SxiNightLoading",
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        DisplayOrder = 999,
+    })
+    
+    pcall(function()
+        if syn and syn.protect_gui then syn.protect_gui(LoadGui) end
+        LoadGui.Parent = GetParent()
+    end)
+    if not LoadGui.Parent then LoadGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    
+    local Background = Create("Frame", {
+        Parent = LoadGui,
+        BackgroundColor3 = Theme.Background,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 0,
+    })
+    
+    local Container = Create("Frame", {
+        Parent = Background,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, -150, 0.5, -80),
+        Size = UDim2.new(0, 300, 0, 160),
+    })
+    
+    local Logo = Create("TextLabel", {
+        Parent = Container,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(1, 0, 0, 40),
+        Font = Enum.Font.GothamBold,
+        Text = title,
+        TextColor3 = Theme.Text,
+        TextSize = 28,
+        TextTransparency = 1,
+    })
+    
+    local Sub = Create("TextLabel", {
+        Parent = Container,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 45),
+        Size = UDim2.new(1, 0, 0, 20),
+        Font = Enum.Font.Gotham,
+        Text = subtitle,
+        TextColor3 = Theme.SubText,
+        TextSize = 13,
+        TextTransparency = 1,
+    })
+    
+    local BarBG = Create("Frame", {
+        Parent = Container,
+        BackgroundColor3 = Theme.Secondary,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 0, 90),
+        Size = UDim2.new(1, 0, 0, 6),
+        BackgroundTransparency = 1,
+    })
+    Create("UICorner", { Parent = BarBG, CornerRadius = UDim.new(1, 0) })
+    Create("UIStroke", { Parent = BarBG, Color = Theme.Border, Thickness = 1, Transparency = 1 })
+    
+    local BarFill = Create("Frame", {
+        Parent = BarBG,
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0,
+        Size = UDim2.new(0, 0, 1, 0),
+    })
+    Create("UICorner", { Parent = BarFill, CornerRadius = UDim.new(1, 0) })
+    
+    local Percent = Create("TextLabel", {
+        Parent = Container,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 105),
+        Size = UDim2.new(1, 0, 0, 20),
+        Font = Enum.Font.Gotham,
+        Text = "0%",
+        TextColor3 = Theme.SubText,
+        TextSize = 12,
+        TextTransparency = 1,
+    })
+    
+    Tween(Logo, 0.5, { TextTransparency = 0 })
+    Tween(Sub, 0.5, { TextTransparency = 0 })
+    Tween(BarBG, 0.5, { BackgroundTransparency = 0 })
+    Tween(Percent, 0.5, { TextTransparency = 0 })
+    
+    task.spawn(function()
+        local steps = 100
+        local stepTime = duration / steps
+        for i = 1, steps do
+            BarFill.Size = UDim2.new(i / steps, 0, 1, 0)
+            Percent.Text = i .. "%"
+            task.wait(stepTime)
+        end
+        Tween(Background, 0.4, { BackgroundTransparency = 1 })
+        Tween(Logo, 0.4, { TextTransparency = 1 })
+        Tween(Sub, 0.4, { TextTransparency = 1 })
+        Tween(Percent, 0.4, { TextTransparency = 1 })
+        Tween(BarBG, 0.4, { BackgroundTransparency = 1 })
+        Tween(BarFill, 0.4, { BackgroundTransparency = 1 })
+        task.wait(0.5)
+        LoadGui:Destroy()
+    end)
+    
+    return LoadGui
+end
+
+-- ============================================
+-- MAIN WINDOW (MakeWindow)
+-- ============================================
+function SxiNight:MakeWindow(config)
+    return self:CreateWindow(config)
+end
+
 function SxiNight:CreateWindow(config)
     config = config or {}
     local windowTitle = config.Title or "SxiNight UI"
     local windowSize = config.Size or UDim2.new(0, 600, 0, 400)
+    local showLoading = config.LoadingScreen
     
-    -- ScreenGui
+    if showLoading then
+        self:CreateLoadingScreen({
+            Title = config.LoadingTitle or windowTitle,
+            Subtitle = config.LoadingSubtitle or "Initializing...",
+            Duration = config.LoadingDuration or 2.5,
+        })
+        task.wait((config.LoadingDuration or 2.5) + 0.5)
+    end
+    
     local ScreenGui = Create("ScreenGui", {
         Name = "SxiNightUI",
         ResetOnSpawn = false,
@@ -103,18 +252,10 @@ function SxiNight:CreateWindow(config)
     })
     
     pcall(function()
-        if syn and syn.protect_gui then
-            syn.protect_gui(ScreenGui)
-        elseif gethui then
-            ScreenGui.Parent = gethui()
-        else
-            ScreenGui.Parent = CoreGui
-        end
+        if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
+        ScreenGui.Parent = GetParent()
     end)
-    
-    if not ScreenGui.Parent then
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
+    if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     
     -- Main Frame
     local MainFrame = Create("Frame", {
@@ -157,12 +298,24 @@ function SxiNight:CreateWindow(config)
         Parent = TitleBar,
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 15, 0, 0),
-        Size = UDim2.new(1, -50, 1, 0),
+        Size = UDim2.new(1, -90, 1, 0),
         Font = Enum.Font.GothamBold,
         Text = windowTitle,
         TextColor3 = Theme.Text,
         TextSize = 14,
         TextXAlignment = Enum.TextXAlignment.Left,
+    })
+    
+    -- Minimize Button
+    local MinimizeButton = Create("TextButton", {
+        Parent = TitleBar,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -60, 0, 0),
+        Size = UDim2.new(0, 30, 1, 0),
+        Font = Enum.Font.GothamBold,
+        Text = "—",
+        TextColor3 = Theme.SubText,
+        TextSize = 14,
     })
     
     -- Close Button
@@ -183,13 +336,94 @@ function SxiNight:CreateWindow(config)
     CloseButton.MouseLeave:Connect(function()
         Tween(CloseButton, 0.15, { TextColor3 = Theme.SubText })
     end)
+    
+    MinimizeButton.MouseEnter:Connect(function()
+        Tween(MinimizeButton, 0.15, { TextColor3 = Theme.Accent })
+    end)
+    MinimizeButton.MouseLeave:Connect(function()
+        Tween(MinimizeButton, 0.15, { TextColor3 = Theme.SubText })
+    end)
+    
+    MakeDraggable(MainFrame, TitleBar)
+    
+    -- ============================================
+    -- MOBILE TOGGLE BUTTON
+    -- ============================================
+    local ToggleButton = Create("ImageButton", {
+        Name = "ToggleButton",
+        Parent = ScreenGui,
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 20, 0, 100),
+        Size = UDim2.new(0, 45, 0, 45),
+        Image = "rbxassetid://7733964719",
+        ImageColor3 = Theme.Text,
+        Visible = false,
+        AutoButtonColor = false,
+    })
+    Create("UICorner", { Parent = ToggleButton, CornerRadius = UDim.new(1, 0) })
+    Create("UIStroke", {
+        Parent = ToggleButton,
+        Color = Theme.Border,
+        Thickness = 2,
+    })
+    
+    -- Add a shadow/glow
+    local Shadow = Create("ImageLabel", {
+        Parent = ToggleButton,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, -32, 0.5, -32),
+        Size = UDim2.new(0, 64, 0, 64),
+        Image = "rbxassetid://5028857084",
+        ImageColor3 = Theme.Accent,
+        ImageTransparency = 0.5,
+        ZIndex = 0,
+    })
+    
+    MakeDraggable(ToggleButton)
+    
+    -- Show toggle button on mobile
+    if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
+        ToggleButton.Visible = true
+    end
+    
+    local windowVisible = true
+    local savedPosition = MainFrame.Position
+    
+    local function ToggleWindow()
+        windowVisible = not windowVisible
+        if windowVisible then
+            MainFrame.Visible = true
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            Tween(MainFrame, 0.3, { Size = windowSize }, Enum.EasingStyle.Back)
+        else
+            Tween(MainFrame, 0.25, { Size = UDim2.new(0, 0, 0, 0) }).Completed:Connect(function()
+                if not windowVisible then MainFrame.Visible = false end
+            end)
+        end
+    end
+    
+    ToggleButton.MouseButton1Click:Connect(ToggleWindow)
+    MinimizeButton.MouseButton1Click:Connect(function()
+        ToggleWindow()
+        if not ToggleButton.Visible then
+            ToggleButton.Visible = true
+        end
+    end)
+    
+    -- Keybind to toggle (PC)
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == (config.ToggleKey or Enum.KeyCode.RightShift) then
+            ToggleWindow()
+        end
+    end)
+    
     CloseButton.MouseButton1Click:Connect(function()
         Tween(MainFrame, 0.25, { Size = UDim2.new(0, 0, 0, 0) }).Completed:Connect(function()
             ScreenGui:Destroy()
         end)
     end)
-    
-    MakeDraggable(MainFrame, TitleBar)
     
     -- Tab Container (Left Sidebar)
     local TabContainer = Create("Frame", {
@@ -287,7 +521,6 @@ function SxiNight:CreateWindow(config)
         end
         
         TabButton.MouseButton1Click:Connect(SelectTab)
-        
         if not CurrentTab then SelectTab() end
         
         local Tab = {}
@@ -315,11 +548,8 @@ function SxiNight:CreateWindow(config)
                 Tween(Btn, 0.15, { BackgroundColor3 = Theme.Secondary })
             end)
             Btn.MouseButton1Click:Connect(function()
-                if config.Callback then
-                    pcall(config.Callback)
-                end
+                if config.Callback then pcall(config.Callback) end
             end)
-            
             return Btn
         end
         
@@ -397,18 +627,22 @@ function SxiNight:CreateWindow(config)
             }
         end
         
+        -- ============================================
+        -- UPDATED SLIDER WITH INPUT + BIGGER BAR
+        -- ============================================
         function Tab:CreateSlider(config)
             config = config or {}
             local min = config.Min or 0
             local max = config.Max or 100
             local default = config.Default or min
+            local increment = config.Increment or 1
             local value = default
             
             local SliderFrame = Create("Frame", {
                 Parent = TabContent,
                 BackgroundColor3 = Theme.Secondary,
                 BorderSizePixel = 0,
-                Size = UDim2.new(1, 0, 0, 50),
+                Size = UDim2.new(1, 0, 0, 70), -- Bigger
             })
             Create("UICorner", { Parent = SliderFrame, CornerRadius = UDim.new(0, 6) })
             Create("UIStroke", { Parent = SliderFrame, Color = Theme.Border, Thickness = 1 })
@@ -416,35 +650,41 @@ function SxiNight:CreateWindow(config)
             Create("TextLabel", {
                 Parent = SliderFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 6),
-                Size = UDim2.new(1, -60, 0, 18),
-                Font = Enum.Font.Gotham,
+                Position = UDim2.new(0, 12, 0, 8),
+                Size = UDim2.new(1, -80, 0, 20),
+                Font = Enum.Font.GothamBold,
                 Text = config.Name or "Slider",
                 TextColor3 = Theme.Text,
                 TextSize = 13,
                 TextXAlignment = Enum.TextXAlignment.Left,
             })
             
-            local ValueLabel = Create("TextLabel", {
+            -- Input Textbox (replaces static value label)
+            local InputBox = Create("TextBox", {
                 Parent = SliderFrame,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(1, -50, 0, 6),
-                Size = UDim2.new(0, 40, 0, 18),
+                BackgroundColor3 = Theme.Tertiary,
+                BorderSizePixel = 0,
+                Position = UDim2.new(1, -70, 0, 8),
+                Size = UDim2.new(0, 58, 0, 22),
                 Font = Enum.Font.GothamBold,
                 Text = tostring(default),
                 TextColor3 = Theme.Accent,
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Right,
+                TextSize = 12,
+                ClearTextOnFocus = false,
             })
+            Create("UICorner", { Parent = InputBox, CornerRadius = UDim.new(0, 4) })
+            Create("UIStroke", { Parent = InputBox, Color = Theme.Border, Thickness = 1 })
             
+            -- BIGGER slider bar
             local SliderBG = Create("Frame", {
                 Parent = SliderFrame,
                 BackgroundColor3 = Theme.Tertiary,
                 BorderSizePixel = 0,
-                Position = UDim2.new(0, 12, 1, -16),
-                Size = UDim2.new(1, -24, 0, 6),
+                Position = UDim2.new(0, 12, 1, -28),
+                Size = UDim2.new(1, -24, 0, 14), -- Bigger height
             })
             Create("UICorner", { Parent = SliderBG, CornerRadius = UDim.new(1, 0) })
+            Create("UIStroke", { Parent = SliderBG, Color = Theme.Border, Thickness = 1 })
             
             local Fill = Create("Frame", {
                 Parent = SliderBG,
@@ -454,21 +694,60 @@ function SxiNight:CreateWindow(config)
             })
             Create("UICorner", { Parent = Fill, CornerRadius = UDim.new(1, 0) })
             
+            -- Add glow gradient to fill
+            local Gradient = Create("UIGradient", {
+                Parent = Fill,
+                Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Theme.Accent),
+                    ColorSequenceKeypoint.new(1, Theme.AccentHover),
+                }),
+            })
+            
+            -- Slider knob
+            local SliderKnob = Create("Frame", {
+                Parent = SliderBG,
+                BackgroundColor3 = Theme.Text,
+                BorderSizePixel = 0,
+                Position = UDim2.new((default - min) / (max - min), -8, 0.5, -10),
+                Size = UDim2.new(0, 20, 0, 20),
+                ZIndex = 2,
+            })
+            Create("UICorner", { Parent = SliderKnob, CornerRadius = UDim.new(1, 0) })
+            Create("UIStroke", { Parent = SliderKnob, Color = Theme.Accent, Thickness = 2 })
+            
             local dragging = false
+            
+            local function SetValue(v, fireCallback)
+                value = math.clamp(math.floor(v / increment + 0.5) * increment, min, max)
+                local pct = (value - min) / (max - min)
+                Tween(Fill, 0.1, { Size = UDim2.new(pct, 0, 1, 0) })
+                Tween(SliderKnob, 0.1, { Position = UDim2.new(pct, -8, 0.5, -10) })
+                InputBox.Text = tostring(value)
+                if fireCallback ~= false and config.Callback then 
+                    pcall(config.Callback, value) 
+                end
+            end
             
             local function Update(input)
                 local pos = math.clamp((input.Position.X - SliderBG.AbsolutePosition.X) / SliderBG.AbsoluteSize.X, 0, 1)
-                value = math.floor(min + (max - min) * pos)
-                Fill.Size = UDim2.new(pos, 0, 1, 0)
-                ValueLabel.Text = tostring(value)
-                if config.Callback then pcall(config.Callback, value) end
+                local newValue = min + (max - min) * pos
+                SetValue(newValue)
             end
             
             SliderBG.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 
                 or input.UserInputType == Enum.UserInputType.Touch then
                     dragging = true
+                    Tween(SliderKnob, 0.15, { Size = UDim2.new(0, 24, 0, 24) })
                     Update(input)
+                end
+            end)
+            
+            SliderKnob.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 
+                or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    Tween(SliderKnob, 0.15, { Size = UDim2.new(0, 24, 0, 24) })
                 end
             end)
             
@@ -482,16 +761,29 @@ function SxiNight:CreateWindow(config)
             UserInputService.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 
                 or input.UserInputType == Enum.UserInputType.Touch then
+                    if dragging then
+                        Tween(SliderKnob, 0.15, { Size = UDim2.new(0, 20, 0, 20) })
+                    end
                     dragging = false
                 end
             end)
             
+            -- Input box typing
+            InputBox.FocusLost:Connect(function(enter)
+                local num = tonumber(InputBox.Text)
+                if num then
+                    SetValue(num)
+                else
+                    InputBox.Text = tostring(value)
+                end
+            end)
+            
+            InputBox.Focused:Connect(function()
+                Tween(InputBox, 0.15, { BackgroundColor3 = Theme.Background })
+            end)
+            
             return {
-                Set = function(_, val)
-                    value = math.clamp(val, min, max)
-                    Fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
-                    ValueLabel.Text = tostring(value)
-                end,
+                Set = function(_, val) SetValue(val) end,
                 Get = function() return value end,
             }
         end
@@ -507,9 +799,7 @@ function SxiNight:CreateWindow(config)
                 TextSize = 13,
                 TextXAlignment = Enum.TextXAlignment.Left,
             })
-            return {
-                Set = function(_, t) Label.Text = t end
-            }
+            return { Set = function(_, t) Label.Text = t end }
         end
         
         function Tab:CreateTextbox(config)
@@ -555,7 +845,6 @@ function SxiNight:CreateWindow(config)
             TextBox.FocusLost:Connect(function(enter)
                 if config.Callback then pcall(config.Callback, TextBox.Text, enter) end
             end)
-            
             return TextBox
         end
         
@@ -616,7 +905,7 @@ function SxiNight:CreateWindow(config)
                 Position = UDim2.new(0, 8, 0, 40),
                 Size = UDim2.new(1, -16, 1, -48),
             })
-            local OptionLayout = Create("UIListLayout", {
+            Create("UIListLayout", {
                 Parent = OptionList,
                 Padding = UDim.new(0, 4),
             })
@@ -739,6 +1028,10 @@ function SxiNight:CreateWindow(config)
                 NotifGui:Destroy()
             end)
         end)
+    end
+    
+    function Window:Toggle()
+        ToggleWindow()
     end
     
     return Window
